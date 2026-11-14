@@ -140,4 +140,4 @@ networks:
 
 volumes:
   alloy_data:
-  tor_data:1
+  tor_data:
