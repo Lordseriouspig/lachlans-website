@@ -62,3 +62,4 @@ jobs:
           build_image backend backend/Dockerfile backend
           build_image frontend frontend/Dockerfile frontend
           build_image alloy alloy/Dockerfile alloy
+          build_image tor tor/Dockerfile tor

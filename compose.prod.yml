@@ -116,6 +116,20 @@ services:
     labels:
       com.lordseriouspig.application: lachlans-website
       com.lordseriouspig.component: alloy
+  tor:
+    image: ghcr.io/lordseriouspig/lachlans-website-tor:production
+    pull_policy: always
+    restart: unless-stopped
+    init: true
+    depends_on:
+      - frontend
+    volumes:
+      - tor-data:/var/lib/tor
+    networks:
+      - application
+    labels:
+      com.lordseriouspig.application: lachlans-website
+      com.lordseriouspig.component: tor
 
 networks:
   application:
@@ -126,3 +140,4 @@ networks:
 
 volumes:
   alloy_data:
+  tor_data:1
