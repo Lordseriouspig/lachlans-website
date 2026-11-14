@@ -18,16 +18,16 @@ use crate::app::models::client_event::{ClientInput, ClientKey, WireInput};
 use crate::app::models::sessions::shared_sessions::SharedSessions;
 use axum::extract::ConnectInfo;
 use axum::http::Request;
-use axum::middleware::Next;
-use axum::response::Response;
+use axum::http::header::AUTHORIZATION;
+use axum::middleware::{Next, from_fn};
+use axum::response::{IntoResponse, Response};
 use axum::{
     Router,
     extract::{
         Json, Path, State,
         ws::{Message, WebSocket, WebSocketUpgrade},
     },
-    http::StatusCode,
-    response::IntoResponse,
+    http::{HeaderMap, StatusCode},
     routing::{get, post},
 };
 use axum_governor::{GovernorConfigBuilder, GovernorLayer, Quota, extractor::SmartIp, nz};
@@ -35,12 +35,18 @@ use color_eyre::Result;
 use ipnet::IpNet;
 use serde::Serialize;
 use std::net::SocketAddr;
-use std::time::Duration;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 use tracing::{Instrument, info_span};
 use uuid::Uuid;
+
+static HTTP_REQUESTS_TOTAL: AtomicU64 = AtomicU64::new(0);
+static HTTP_REQUEST_DURATION_MICROSECONDS_TOTAL: AtomicU64 = AtomicU64::new(0);
+static SESSIONS_CREATED_TOTAL: AtomicU64 = AtomicU64::new(0);
+static WEBSOCKET_CONNECTIONS_ACTIVE: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Serialize)]
 struct CreateSessionResponse {
@@ -68,13 +74,30 @@ pub async fn req_logger(
         "request received"
     );
 
-    next.run(req).await
+    let started = Instant::now();
+    let method = req.method().clone();
+    let path = req.uri().path().to_owned();
+    let span = tracing::info_span!("http.request", method = %method, path = %path);
+    let response = next.run(req).instrument(span).await;
+    let elapsed = started.elapsed();
+    HTTP_REQUESTS_TOTAL.fetch_add(1, Ordering::Relaxed);
+    HTTP_REQUEST_DURATION_MICROSECONDS_TOTAL
+        .fetch_add(elapsed.as_micros() as u64, Ordering::Relaxed);
+    tracing::info!(
+        ip = %ip,
+        method = %method,
+        path = %path,
+        status = response.status().as_u16(),
+        duration_ms = elapsed.as_secs_f64() * 1000.0,
+        "request completed"
+    );
+    response
 }
 
 pub async fn start_server(sessions: SharedSessions) -> Result<()> {
     let cfg = GovernorConfigBuilder::default()
         .with_extractor(
-            SmartIp::new().with_trusted_proxies(vec!["172.20.0.10/32".parse::<IpNet>().unwrap()]),
+            SmartIp::new().with_trusted_proxies(vec!["172.20.0.0/16".parse::<IpNet>().unwrap()]),
         )
         .expect_connect_info()
         .quota_default(Quota::requests_per_minute(nz!(10u32)))
@@ -82,8 +105,13 @@ pub async fn start_server(sessions: SharedSessions) -> Result<()> {
     let api = Router::new()
         .route("/session", post(create_session))
         .route("/ws/{id}", get(ws_handler))
+        .route("/metrics", get(metrics_handler))
         .layer(GovernorLayer::new(cfg));
-    let app = Router::new().nest("/api", api).with_state(sessions);
+    let app = Router::new()
+        .route("/health", get(health_handler))
+        .nest("/api", api)
+        .with_state(sessions)
+        .layer(from_fn(req_logger));
     let listener = tokio::net::TcpListener::bind("0.0.0.0:4000").await?;
     tracing::info!(address = %listener.local_addr()?, "Server listening!!");
     axum::serve(
@@ -94,14 +122,51 @@ pub async fn start_server(sessions: SharedSessions) -> Result<()> {
     Ok(())
 }
 
+async fn health_handler() -> (StatusCode, Json<serde_json::Value>) {
+    (StatusCode::OK, Json(serde_json::json!({ "status": "ok" })))
+}
+
 async fn create_session(State(sessions): State<SharedSessions>) -> Json<CreateSessionResponse> {
     tracing::debug!("POST /api/session");
+    SESSIONS_CREATED_TOTAL.fetch_add(1, Ordering::Relaxed);
     let shared = sessions.clone();
     let mut manager = sessions.write().await;
     let id = manager.create_session(shared);
     Json(CreateSessionResponse {
         session_id: id.to_string(),
     })
+}
+
+async fn metrics_handler(headers: HeaderMap, State(sessions): State<SharedSessions>) -> Response {
+    let expected = match std::env::var("METRICS_TOKEN") {
+        Ok(token) if !token.is_empty() => format!("Bearer {token}"),
+        _ => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    };
+    if headers
+        .get(AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        != Some(expected.as_str())
+    {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+
+    let active_sessions = sessions.read().await.len();
+    let body = format!(
+        "# HELP tui_http_requests_total Total HTTP requests handled.\n# TYPE tui_http_requests_total counter\ntui_http_requests_total {}\n# HELP tui_http_request_duration_seconds_sum Total HTTP request time in seconds.\n# TYPE tui_http_request_duration_seconds_sum counter\ntui_http_request_duration_seconds_sum {:.6}\n# HELP tui_sessions_created_total Total TUI sessions created.\n# TYPE tui_sessions_created_total counter\ntui_sessions_created_total {}\n# HELP tui_sessions_active Current TUI sessions.\n# TYPE tui_sessions_active gauge\ntui_sessions_active {}\n# HELP tui_websocket_connections_active Current WebSocket connections.\n# TYPE tui_websocket_connections_active gauge\ntui_websocket_connections_active {}\n",
+        HTTP_REQUESTS_TOTAL.load(Ordering::Relaxed),
+        HTTP_REQUEST_DURATION_MICROSECONDS_TOTAL.load(Ordering::Relaxed) as f64 / 1_000_000.0,
+        SESSIONS_CREATED_TOTAL.load(Ordering::Relaxed),
+        active_sessions,
+        WEBSOCKET_CONNECTIONS_ACTIVE.load(Ordering::Relaxed),
+    );
+    (
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4",
+        )],
+        body,
+    )
+        .into_response()
 }
 
 async fn ws_handler(
@@ -133,6 +198,7 @@ async fn handle_socket(
     mut rx: broadcast::Receiver<Vec<u8>>,
     tx: UnboundedSender<ClientInput>,
 ) {
+    WEBSOCKET_CONNECTIONS_ACTIVE.fetch_add(1, Ordering::Relaxed);
     tracing::debug!("ws upgrade");
     loop {
         tokio::select! {
@@ -209,6 +275,7 @@ async fn handle_socket(
     if let Err(err) = tx.send(ClientInput::Disconnect) {
         tracing::warn!(%err, "Error sending disconnect message");
     };
+    WEBSOCKET_CONNECTIONS_ACTIVE.fetch_sub(1, Ordering::Relaxed);
 }
 
 fn parse_input(text: &String) -> Option<ClientInput> {

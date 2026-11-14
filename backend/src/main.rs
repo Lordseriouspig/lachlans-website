@@ -20,6 +20,9 @@ pub mod middleware;
 pub mod tui;
 
 use color_eyre::Result;
+use opentelemetry::global;
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::trace::SdkTracerProvider;
 use std::env;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -35,25 +38,43 @@ async fn main() -> Result<()> {
 
     color_eyre::install()?;
 
-    if env::var("JSON_LOG")
-        .map(|v| v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false)
-    {
-        tracing_subscriber::fmt()
-            .json()
-            .with_env_filter(EnvFilter::from_default_env())
-            .init();
+    let tracer_provider = if let Ok(endpoint) = env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
+        let exporter = opentelemetry_otlp::SpanExporter::builder()
+            .with_tonic()
+            .with_endpoint(endpoint)
+            .build()?;
+        let provider = SdkTracerProvider::builder()
+            .with_resource(
+                opentelemetry_sdk::Resource::builder()
+                    .with_service_name("tui-backend")
+                    .build(),
+            )
+            .with_batch_exporter(exporter)
+            .build();
+        global::set_tracer_provider(provider.clone());
+        Some(provider)
     } else {
-        tracing_subscriber::fmt()
-            .with_env_filter(EnvFilter::from_default_env())
-            .init();
+        None
     };
+
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+
+    tracing_subscriber::registry()
+        .with(EnvFilter::from_default_env())
+        .with(tracing_subscriber::fmt::layer().json())
+        .with(tracing_opentelemetry::layer())
+        .try_init()?;
 
     tracing::info!(debug=%cfg!(debug_assertions), "Starting!");
 
     let sessions = Arc::new(RwLock::new(SessionManager::new()));
 
     start_server(sessions).await?;
+
+    if let Some(provider) = tracer_provider {
+        provider.shutdown()?;
+    }
 
     Ok(())
 }

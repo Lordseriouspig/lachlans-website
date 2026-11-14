@@ -58,6 +58,10 @@ impl SessionManager {
         self.sessions.get(id)
     }
 
+    pub fn len(&self) -> usize {
+        self.sessions.len()
+    }
+
     pub fn destroy_session(&mut self, id: &Uuid) {
         self.sessions.remove(id);
     }

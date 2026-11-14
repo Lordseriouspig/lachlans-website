@@ -1,0 +1,208 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// Collect the Pi's host metrics.
+prometheus.exporter.unix "host" {
+  rootfs_path              = "/rootfs"
+  procfs_path              = "/host/proc"
+  sysfs_path               = "/host/sys"
+  include_exporter_metrics = true
+}
+
+prometheus.scrape "host" {
+  targets         = prometheus.exporter.unix.host.targets
+  scrape_interval = "15s"
+  forward_to      = [prometheus.relabel.host.receiver]
+}
+
+prometheus.relabel "host" {
+  forward_to = [prometheus.remote_write.remote.receiver]
+
+  rule {
+    target_label = "instance"
+    replacement  = "tui_pi5"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "tui_pi5"
+  }
+}
+
+// Discover and scrape Docker containers, including the TUI services.
+prometheus.exporter.cadvisor "containers" {
+  docker_host      = "unix:///var/run/docker.sock"
+  storage_duration = "5m"
+}
+
+prometheus.scrape "containers" {
+  targets         = prometheus.exporter.cadvisor.containers.targets
+  scrape_interval = "15s"
+  forward_to      = [prometheus.relabel.containers.receiver]
+}
+
+prometheus.relabel "containers" {
+  forward_to = [prometheus.remote_write.remote.receiver]
+
+  rule {
+    source_labels = ["container_label_com_docker_compose_project"]
+    regex         = "tui"
+    action        = "keep"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = "tui_pi5"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "tui_containers"
+  }
+}
+
+// Ship container stdout and stderr to the shared Loki endpoint.
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker_logs" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "tui"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+}
+
+loki.source.docker "containers" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.containers.targets
+  relabel_rules = discovery.relabel.docker_logs.rules
+
+  labels = {
+    application = "tui",
+    host        = "tui_pi5",
+  }
+
+  forward_to = [loki.write.remote.receiver]
+}
+
+loki.write "remote" {
+  endpoint {
+    url = sys.env("ALLOY_LOKI_URL")
+  }
+}
+
+// Scrape the Rust backend's bearer-protected Prometheus endpoint.
+prometheus.scrape "tui_backend" {
+  targets = [{
+    "__address__" = "backend:4000",
+  }]
+
+  metrics_path    = "/api/metrics"
+  scrape_interval = "15s"
+
+  authorization {
+    type        = "Bearer"
+    credentials = sys.env("METRICS_TOKEN")
+  }
+
+  forward_to = [prometheus.relabel.tui_backend.receiver]
+}
+
+prometheus.relabel "tui_backend" {
+  forward_to = [prometheus.remote_write.remote.receiver]
+
+  rule {
+    target_label = "application"
+    replacement  = "tui"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = "tui_backend"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "tui_backend"
+  }
+}
+
+// Collect Cloudflare Tunnel connection and request metrics.
+prometheus.scrape "cloudflared" {
+  targets = [{
+    "__address__" = "cloudflared:2000",
+  }]
+
+  metrics_path    = "/metrics"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.relabel.cloudflared.receiver]
+}
+
+prometheus.relabel "cloudflared" {
+  forward_to = [prometheus.remote_write.remote.receiver]
+
+  rule {
+    target_label = "application"
+    replacement  = "tui"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = "tui_cloudflared"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "tui_cloudflared"
+  }
+}
+
+prometheus.remote_write "remote" {
+  endpoint {
+    url = sys.env("ALLOY_PROM_URL")
+  }
+}
+
+// Accept backend traces and forward them to the shared Tempo endpoint.
+otelcol.receiver.otlp "tui_traces" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+
+  output {
+    traces = [otelcol.processor.batch.tui_traces.input]
+  }
+}
+
+otelcol.processor.batch "tui_traces" {
+  output {
+    traces = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = sys.env("ALLOY_TEMPO_URL")
+
+    tls {
+      insecure = true
+    }
+  }
+}

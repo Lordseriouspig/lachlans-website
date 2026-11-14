@@ -42,6 +42,9 @@ If you, for some reason, want to download and run this on your own system, you m
    ```docker compose up --build```
 5. Profit!
 
+> [!WARNING]
+> I've changed a few things around regarding deploying this so I can deploy it easier, and I uh cant be bothered to update this readme so if something breaks go ask claude how to deploy it or smth i know noone will actually want to deploy this youself anyway lmao. Uh yeah sorry :pf:
+
 ### Without docker
 
 I have no clue why you'd want to do this if you're not me, but if something compels you to, you may run this without
