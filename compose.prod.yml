@@ -124,7 +124,7 @@ services:
     depends_on:
       - frontend
     volumes:
-      - tor-data:/var/lib/tor
+      - tor_data:/var/lib/tor
     networks:
       - application
     labels:
