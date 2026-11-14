@@ -2,6 +2,6 @@ DataDirectory /var/lib/tor
 SocksPort 0
 Log notice stdout
 
-HiddenServiceDir /var/lib/tor/key-files
+HiddenServiceDir /var/lib/tor/lachlans-website/key-files
 HiddenServiceVersion 3
 HiddenServicePort 80 frontend:80

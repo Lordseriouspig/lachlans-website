@@ -19,9 +19,9 @@
 
 set -eu
 
-mkdir -p /var/lib/tor/lachlans-website
+mkdir -p /var/lib/tor/lachlans-website/key-files
 chown -R debian-tor:debian-tor /var/lib/tor
-chmod 700 /var/lib/tor/key-files
-chmod 600 /var/lib/tor/key-files/*
+chmod 700 /var/lib/tor/lachlans-website/key-files
+chmod 600 /var/lib/tor/lachlans-website/key-files/*
 
 exec gosu debian-tor tor -f /etc/tor/torrc
