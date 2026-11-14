@@ -1,8 +1,9 @@
-name: tui
+name: lachlans-website
 
 services:
   backend:
-    image: ghcr.io/lordseriouspig/lordseriouspigs-website-backend:production
+    image: ghcr.io/lordseriouspig/lachlans-website-backend:production
+    platform: linux/arm64
     pull_policy: always
     restart: unless-stopped
     init: true
@@ -24,11 +25,12 @@ services:
     networks:
       - application
     labels:
-      com.lordseriouspig.application: tui
+      com.lordseriouspig.application: lachlans-website
       com.lordseriouspig.component: backend
 
   frontend:
-    image: ghcr.io/lordseriouspig/lordseriouspigs-website-frontend:production
+    image: ghcr.io/lordseriouspig/lachlans-website-frontend:production
+    platform: linux/arm64
     pull_policy: always
     restart: unless-stopped
     init: true
@@ -46,7 +48,7 @@ services:
     networks:
       - application
     labels:
-      com.lordseriouspig.application: tui
+      com.lordseriouspig.application: lachlans-website
       com.lordseriouspig.component: frontend
 
   cloudflared:
@@ -71,11 +73,12 @@ services:
     networks:
       - application
     labels:
-      com.lordseriouspig.application: tui
+      com.lordseriouspig.application: lachlans-website
       com.lordseriouspig.component: cloudflared
 
   alloy:
-    image: grafana/alloy:latest
+    image: ghcr.io/lordseriouspig/lachlans-website-alloy:production
+    platform: linux/arm64
     pull_policy: always
     restart: unless-stopped
     init: true
@@ -101,7 +104,6 @@ services:
       ALLOY_TEMPO_URL: ${ALLOY_TEMPO_URL:?Set ALLOY_TEMPO_URL in .env}
       METRICS_TOKEN: ${METRICS_TOKEN:?Set METRICS_TOKEN in .env}
     volumes:
-      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
       - alloy_data:/var/lib/alloy/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /:/rootfs:ro,rslave
@@ -112,7 +114,7 @@ services:
     networks:
       - application
     labels:
-      com.lordseriouspig.application: tui
+      com.lordseriouspig.application: lachlans-website
       com.lordseriouspig.component: alloy
 
 networks:

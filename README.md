@@ -1,26 +1,26 @@
 <!--
- Copyright (C) 2026 Lordseriouspig
+ Copyright (C) 2026 Lachlan
  
- This file is part of lordseriouspigs-website.
+ This file is part of lachlans-website.
  
- lordseriouspigs-website is free software: you can redistribute it and/or modify
+ lachlans-website is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
  
- lordseriouspigs-website is distributed in the hope that it will be useful,
+ lachlans-website is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
  
  You should have received a copy of the GNU General Public License
- along with lordseriouspigs-website.  If not, see <https://www.gnu.org/licenses/>.
+ along with lachlans-website.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
-# Lordseriouspig's Website
+# Lachlan's Website
 
-![License](https://img.shields.io/github/license/Lordseriouspig/lordseriouspigs-website)
-![GitHub last commit](https://img.shields.io/github/last-commit/Lordseriouspig/lordseriouspigs-website)
+![License](https://img.shields.io/github/license/lachlan/lachlans-website)
+![GitHub last commit](https://img.shields.io/github/last-commit/lachlan/lachlans-website)
 
 Hi hello, you've stumpled upon the website to my humble website. Whilst the frontend may not look like much yet (I do
 have plans to neaten it up and make it a little nicer and add some more features soon!) the backend is a lot more. This
@@ -34,9 +34,9 @@ which contains a page on how it was made.
 If you, for some reason, want to download and run this on your own system, you may do so through docker compose. Simply:
 
 1. Clone the repo
-   ```git clone https://github.com/Lordseriouspig/lordseriouspigs-website.git```
+   ```git clone https://github.com/lordseriouspig/lachlans-website.git```
 2. cd into the directory
-   ```cd lordseriouspigs-website```
+   ```cd lachlans-website```
 3. Create ``./backend/.env`` from ``./backend/.env.example``
 4. Run
    ```docker compose up --build```
@@ -51,9 +51,9 @@ I have no clue why you'd want to do this if you're not me, but if something comp
 docker pretty easily,
 
 1. Clone the repo
-   ```git clone https://github.com/Lordseriouspig/lordseriouspigs-website.git```
+   ```git clone https://github.com/lordseriouspig/lachlans-website.git```
 2. cd into the directory
-   ```cd lordseriouspigs-website```
+   ```cd lachlans-website```
 3. Create ``./backend/.env`` from ``./backend/.env.example``
 4. Run ``cargo run --manifest-path ./backend/Cargo.toml & npm --prefix ./frontend run dev`` (or just yk run these
    separately, then you wont have to kill the backend task manually)
