@@ -6,8 +6,8 @@ RUN apt-get update \
         gosu \
     && rm -rf /var/lib/apt/lists/*
 
-COPY tor/torrc /etc/tor/torrc
-COPY tor/entrypoint.sh /entrypoint.sh
+COPY torrc /etc/tor/torrc
+COPY entrypoint.sh /entrypoint.sh
 
 RUN chmod 755 /entrypoint.sh
 
