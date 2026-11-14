@@ -19,8 +19,8 @@
 
 # Lachlan's Website
 
-![License](https://img.shields.io/github/license/lachlan/lachlans-website)
-![GitHub last commit](https://img.shields.io/github/last-commit/lachlan/lachlans-website)
+![License](https://img.shields.io/github/license/lordseriouspig/lachlans-website)
+![GitHub last commit](https://img.shields.io/github/last-commit/lordseriouspig/lachlans-website)
 
 Hi hello, you've stumpled upon the website to my humble website. Whilst the frontend may not look like much yet (I do
 have plans to neaten it up and make it a little nicer and add some more features soon!) the backend is a lot more. This
