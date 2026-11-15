@@ -37,7 +37,7 @@ jobs:
       - name: Expose GitHub Actions runtime
         uses: crazy-max/ghaction-github-runtime@v3
 
-      - name: Build and push native ARM64 application images
+      - name: Build and push ARM64 application images
         env:
           OWNER: ${{ github.repository_owner }}
           GIT_SHA: ${{ github.sha }}
@@ -86,7 +86,7 @@ jobs:
       - name: Expose GitHub Actions runtime
         uses: crazy-max/ghaction-github-runtime@v3
 
-      - name: Build and push native ARM64 application images
+      - name: Build and push x86 application images
         env:
           OWNER: ${{ github.repository_owner }}
           GIT_SHA: ${{ github.sha }}
