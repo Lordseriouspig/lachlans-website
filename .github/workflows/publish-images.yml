@@ -15,8 +15,8 @@ permissions:
   packages: write
 
 jobs:
-  build-and-publish-arm64:
-    name: Build and publish ARM64 images
+  build-arm64:
+    name: Build ARM64 images
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
 
@@ -34,10 +34,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Expose GitHub Actions runtime
-        uses: crazy-max/ghaction-github-runtime@v3
-
-      - name: Build and push ARM64 application images
+      - name: Build and push ARM64 images
         env:
           OWNER: ${{ github.repository_owner }}
           GIT_SHA: ${{ github.sha }}
@@ -49,12 +46,12 @@ jobs:
             local image="$1"
             local dockerfile="$2"
             local context="$3"
+
             docker buildx build \
               --platform linux/arm64 \
               --pull \
               --push \
-              --tag "ghcr.io/${OWNER}/lachlans-website-${image}:production" \
-              --tag "ghcr.io/${OWNER}/lachlans-website-${image}:sha-${GIT_SHA}" \
+              --tag "ghcr.io/${OWNER}/lachlans-website-${image}:arm64-${GIT_SHA}" \
               --file "$dockerfile" \
               "$context"
           }
@@ -64,8 +61,8 @@ jobs:
           build_image alloy alloy/Dockerfile alloy
           build_image tor tor/Dockerfile tor
 
-  build-and-publish-x86:
-    name: Build and publish x86 images
+  build-amd64:
+    name: Build AMD64 images
     runs-on: ubuntu-24.04
     timeout-minutes: 60
 
@@ -83,10 +80,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Expose GitHub Actions runtime
-        uses: crazy-max/ghaction-github-runtime@v3
-
-      - name: Build and push x86 application images
+      - name: Build and push AMD64 images
         env:
           OWNER: ${{ github.repository_owner }}
           GIT_SHA: ${{ github.sha }}
@@ -98,12 +92,12 @@ jobs:
             local image="$1"
             local dockerfile="$2"
             local context="$3"
+
             docker buildx build \
               --platform linux/amd64 \
               --pull \
               --push \
-              --tag "ghcr.io/${OWNER}/lachlans-website-${image}:production" \
-              --tag "ghcr.io/${OWNER}/lachlans-website-${image}:sha-${GIT_SHA}" \
+              --tag "ghcr.io/${OWNER}/lachlans-website-${image}:amd64-${GIT_SHA}" \
               --file "$dockerfile" \
               "$context"
           }
@@ -112,3 +106,46 @@ jobs:
           build_image frontend frontend/Dockerfile frontend
           build_image alloy alloy/Dockerfile alloy
           build_image tor tor/Dockerfile tor
+
+  publish-manifests:
+    name: Publish multi-platform manifests
+    runs-on: ubuntu-24.04
+    needs:
+      - build-arm64
+      - build-amd64
+    timeout-minutes: 30
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create multi-platform manifests
+        env:
+          OWNER: ${{ github.repository_owner }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          OWNER="${OWNER,,}"
+
+          publish_image() {
+            local image="$1"
+            local base="ghcr.io/${OWNER}/lachlans-website-${image}"
+
+            docker buildx imagetools create \
+              --tag "${base}:production" \
+              --tag "${base}:sha-${GIT_SHA}" \
+              "${base}:arm64-${GIT_SHA}" \
+              "${base}:amd64-${GIT_SHA}"
+          }
+
+          publish_image backend
+          publish_image frontend
+          publish_image alloy
+          publish_image tor
