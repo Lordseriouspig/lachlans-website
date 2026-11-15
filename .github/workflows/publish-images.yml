@@ -1,4 +1,4 @@
-name: Build and publish TUI images
+name: Build and publish website images
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: tui-production-build
+  group: lachlans-website-production-build
   cancel-in-progress: true
 
 permissions:
@@ -99,7 +99,7 @@ jobs:
             local dockerfile="$2"
             local context="$3"
             docker buildx build \
-              --platform linux/arm64 \
+              --platform linux/amd64 \
               --pull \
               --push \
               --tag "ghcr.io/${OWNER}/lachlans-website-${image}:production" \
