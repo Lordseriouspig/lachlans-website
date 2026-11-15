@@ -3,7 +3,6 @@ name: lachlans-website
 services:
   backend:
     image: ghcr.io/lordseriouspig/lachlans-website-backend:production
-    platform: linux/arm64
     pull_policy: always
     restart: unless-stopped
     init: true
@@ -30,7 +29,6 @@ services:
 
   frontend:
     image: ghcr.io/lordseriouspig/lachlans-website-frontend:production
-    platform: linux/arm64
     pull_policy: always
     restart: unless-stopped
     init: true
@@ -78,7 +76,6 @@ services:
 
   alloy:
     image: ghcr.io/lordseriouspig/lachlans-website-alloy:production
-    platform: linux/arm64
     pull_policy: always
     restart: unless-stopped
     init: true
