@@ -19,21 +19,24 @@ use crate::app::models::sessions::shared_sessions::SharedSessions;
 use std::collections::HashMap;
 use tracing::Instrument;
 use uuid::Uuid;
+use crate::app::models::api::api_state::SharedApiState;
 
 pub struct SessionManager {
     sessions: HashMap<Uuid, SessionHandle>,
+    api_state: SharedApiState,
 }
 
 impl SessionManager {
-    pub fn new() -> Self {
+    pub fn new(api_state: SharedApiState) -> Self {
         Self {
             sessions: HashMap::new(),
+            api_state,
         }
     }
 
     pub fn create_session(&mut self, shared: SharedSessions) -> Uuid {
         let id = Uuid::new_v4();
-        let (session, handle) = Session::new(id);
+        let (session, handle) = Session::new(id, self.api_state.clone());
 
         tracing::info!(%id, "Creating session");
         self.sessions.insert(id, handle);

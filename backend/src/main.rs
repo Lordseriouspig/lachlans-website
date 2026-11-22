@@ -26,8 +26,11 @@ use opentelemetry_sdk::trace::SdkTracerProvider;
 use std::env;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tracing::Instrument;
 use tracing_subscriber::EnvFilter;
-
+use crate::app::api_poller::spawn_poller;
+use crate::app::models::api::api_state::{ApiState, SharedApiState};
+use crate::app::models::api::stats::StatsConf;
 use crate::app::models::sessions::manager::SessionManager;
 use crate::middleware::websocket::server::start_server;
 
@@ -68,9 +71,32 @@ async fn main() -> Result<()> {
 
     tracing::info!(debug=%cfg!(debug_assertions), "Starting!");
 
-    let sessions = Arc::new(RwLock::new(SessionManager::new()));
+    let api_state: SharedApiState =
+        Arc::new(RwLock::new(ApiState::default()));
+    let poller_state = api_state.clone();
+    let api_client = reqwest::Client::new();
+
+    let stats_cfg = StatsConf {
+        base_url: env::var("HACKATIME_URL")
+            .unwrap_or_else(|_| "https://hackatime.hackclub.com".to_string()),
+        username: env::var("HACKATIME_USERNAME").ok(),
+        api_key: env::var("HACKATIME_STATS_API_KEY").ok(),
+    };
+
+    let poller = tokio::spawn(
+        async move {
+            spawn_poller(poller_state, api_client, stats_cfg).await;
+        }
+            .instrument(tracing::info_span!("API Poller")),
+    );
+
+    let sessions = Arc::new(RwLock::new(
+        SessionManager::new(api_state.clone()),
+    ));
 
     start_server(sessions).await?;
+
+    poller.abort();
 
     if let Some(provider) = tracer_provider {
         provider.shutdown()?;
