@@ -1,29 +1,65 @@
+name: lachlans-website-dev
+
 services:
   backend:
-    build: ./backend
-    container_name: backend
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    pull_policy: build
     restart: unless-stopped
+    init: true
+    environment:
+      RUST_LOG: debug
+      APP_ENV: development
+      HACKATIME_USERNAME: ${HACKATIME_USERNAME:-}
+      HACKATIME_URL: ${HACKATIME_URL:-https://hackatime.hackclub.com}
+      HACKATIME_STATS_API_KEY: ${HACKATIME_STATS_API_KEY:-}
+      METRICS_TOKEN: ${METRICS_TOKEN:?Set METRICS_TOKEN in .env}
+    ports:
+      - "4000"
     expose:
       - "4000"
+    healthcheck:
+      test: ["CMD", "/app/healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
-      lordseriouspigs-website-net:
+      - application
+    labels:
+      com.lordseriouspig.application: lachlans-website-dev
+      com.lordseriouspig.component: backend
 
-  nginx:
+  frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    container_name: nginx
+      context: frontend
+      dockerfile: Dockerfile
+    pull_policy: build
     restart: unless-stopped
+    init: true
     ports:
       - "8080:80"
+    expose:
+      - "80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
-      lordseriouspigs-website-net:
-        ipv4_address: 172.20.0.10
+      - application
+    labels:
+      com.lordseriouspig.application: lachlans-website-dev
+      com.lordseriouspig.component: frontend
+
 networks:
-  lordseriouspigs-website-net:
+  application:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.30.0.0/16

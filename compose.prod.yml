@@ -8,6 +8,7 @@ services:
     init: true
     environment:
       RUST_LOG: ${RUST_LOG:-info}
+      APP_ENV: production
       HACKATIME_USERNAME: ${HACKATIME_USERNAME:-}
       HACKATIME_URL: ${HACKATIME_URL:-https://hackatime.hackclub.com}
       HACKATIME_STATS_API_KEY: ${HACKATIME_STATS_API_KEY:-}

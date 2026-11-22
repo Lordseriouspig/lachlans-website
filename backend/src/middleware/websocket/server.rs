@@ -14,6 +14,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+use std::env;
 use crate::app::models::client_event::{ClientInput, ClientKey, WireInput};
 use crate::app::models::sessions::shared_sessions::SharedSessions;
 use axum::extract::ConnectInfo;
@@ -95,9 +96,13 @@ pub async fn req_logger(
 }
 
 pub async fn start_server(sessions: SharedSessions) -> Result<()> {
+    let trusted_proxies: Vec<IpNet> = match env::var("APP_ENV").as_deref() {
+        Ok("development") => vec!["0.0.0.0/0".parse::<IpNet>()?],
+        _ => vec!["172.20.0.0/16".parse::<IpNet>()?], // Fail secure
+    };
     let cfg = GovernorConfigBuilder::default()
         .with_extractor(
-            SmartIp::new().with_trusted_proxies(vec!["172.20.0.0/16".parse::<IpNet>().unwrap()]),
+            SmartIp::new().with_trusted_proxies(trusted_proxies),
         )
         .expect_connect_info()
         .quota_default(Quota::requests_per_minute(nz!(10u32)))
