@@ -31,6 +31,8 @@ pub enum ClientKey {
     Escape,
     ArrowLeft,
     ArrowRight,
+    ArrowUp,
+    ArrowDown,
     Tab,
 }
 

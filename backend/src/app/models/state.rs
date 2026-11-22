@@ -14,6 +14,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+use ratatui::widgets::ScrollbarState;
 use crate::app::models::api::api_state::SharedApiState;
 use strum::{Display, EnumIter, FromRepr};
 
@@ -23,6 +24,7 @@ pub struct App {
     pub selected_tab: SelectedTab,
     pub area_change: Option<ratatui::layout::Rect>,
     pub api_state: SharedApiState,
+    pub about_site_scroll: ScrollbarState,
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
@@ -33,7 +35,7 @@ pub enum AppState {
     Quitting,
 }
 
-#[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Display, FromRepr, EnumIter)]
 pub enum SelectedTab {
     #[default]
     #[strum(to_string = "Home")]

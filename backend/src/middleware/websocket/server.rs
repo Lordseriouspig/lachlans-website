@@ -293,6 +293,8 @@ fn parse_input(text: &String) -> Option<ClientInput> {
                 "Escape" => ClientKey::Escape,
                 "ArrowLeft" => ClientKey::ArrowLeft,
                 "ArrowRight" => ClientKey::ArrowRight,
+                "ArrowUp" => ClientKey::ArrowUp,
+                "ArrowDown" => ClientKey::ArrowDown,
                 "Tab" => ClientKey::Tab,
                 c if c.len() == 1 => ClientKey::Char(c.chars().next().unwrap()),
                 _ => return None,

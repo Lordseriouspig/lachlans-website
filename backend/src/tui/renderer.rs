@@ -71,7 +71,7 @@ impl Widget for &App {
             }
             SelectedTab::About => self.selected_tab.coming_soon(inner_area, buf),
             SelectedTab::AboutThisSite => {
-                about_this_site::render(self.selected_tab.block(), inner_area, buf)
+                about_this_site::render(self.selected_tab.block(), inner_area, buf, &self.about_site_scroll)
             }
             SelectedTab::Projects => self.selected_tab.coming_soon(inner_area, buf),
             SelectedTab::Contact => self.selected_tab.coming_soon(inner_area, buf),
