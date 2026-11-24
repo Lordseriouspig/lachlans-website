@@ -48,5 +48,6 @@ pub fn border_paragraph<'a>(p: Vec<Line<'a>>, block: Block<'a>) -> Paragraph<'a>
     Paragraph::new(p)
         .block(block.borders(Borders::ALL))
         .style(Style::new().fg(to_ratatui(themes::catppuccin::BODY_TEXT)))
-        .wrap(Wrap { trim: false })
+        .scroll((0, 0))
+        .wrap(Wrap { trim: true })
 }

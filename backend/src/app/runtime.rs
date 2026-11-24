@@ -93,6 +93,8 @@ impl App {
             ClientKey::Char('l') | ClientKey::ArrowRight => self.next_tab(),
             ClientKey::Char('h') | ClientKey::ArrowLeft => self.previous_tab(),
             ClientKey::Char('q') | ClientKey::Escape => self.quit(),
+            ClientKey::ArrowUp | ClientKey::Char('k') if self.selected_tab == crate::app::models::state::SelectedTab::AboutThisSite => { self.about_site_scroll = self.about_site_scroll.clone().position(self.about_site_scroll.get_position().saturating_sub(1)); }
+            ClientKey::ArrowDown | ClientKey::Char('j') if self.selected_tab == crate::app::models::state::SelectedTab::AboutThisSite => { self.about_site_scroll = self.about_site_scroll.clone().position(self.about_site_scroll.get_position().saturating_add(1)); }
             _ => {}
         }
     }
